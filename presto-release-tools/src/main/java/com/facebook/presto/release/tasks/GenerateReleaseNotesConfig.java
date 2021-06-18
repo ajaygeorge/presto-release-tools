@@ -22,6 +22,7 @@ import java.util.Optional;
 public class GenerateReleaseNotesConfig
 {
     private Optional<String> version = Optional.empty();
+    private Optional<String> debug = Optional.empty();
 
     @NotNull
     public Optional<String> getVersion()
@@ -33,6 +34,19 @@ public class GenerateReleaseNotesConfig
     public GenerateReleaseNotesConfig setVersion(String version)
     {
         this.version = Optional.ofNullable(version);
+        return this;
+    }
+
+    @NotNull
+    public Optional<String> getDebug()
+    {
+        return debug;
+    }
+
+    @Config("release-notes.debug")
+    public GenerateReleaseNotesConfig setDebug(String debug)
+    {
+        this.debug = Optional.ofNullable(debug);
         return this;
     }
 }

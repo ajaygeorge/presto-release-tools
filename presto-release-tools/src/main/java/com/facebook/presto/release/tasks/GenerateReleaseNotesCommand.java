@@ -34,6 +34,10 @@ public class GenerateReleaseNotesCommand
     @ConfigProperty("release-notes.version")
     public String version;
 
+    @Option(name = "--debug", title = "Release notes debug")
+    @ConfigProperty("release-notes.debug")
+    public String debug;
+
     @Inject
     public PrestoRepositoryOptions repositoryOptions = new PrestoRepositoryOptions();
 

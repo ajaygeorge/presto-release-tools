@@ -93,6 +93,7 @@ public class GenerateReleaseNotesTask
     private final GitRepository repository;
     private final GithubAction githubAction;
     private final Optional<MavenVersion> version;
+    private final Optional<Boolean> debug;
 
     @Inject
     public GenerateReleaseNotesTask(
@@ -104,6 +105,7 @@ public class GenerateReleaseNotesTask
         this.repository = requireNonNull(git.getRepository(), "repository is null");
         this.githubAction = requireNonNull(githubAction, "githubAction is null");
         this.version = config.getVersion().map(PrestoVersion::create);
+        this.debug = config.getDebug().map(Boolean::valueOf);
     }
 
     @Override
@@ -111,23 +113,40 @@ public class GenerateReleaseNotesTask
     {
         sanitizeRepository(git);
         MavenVersion version = this.version.orElseGet(() -> PrestoVersion.create(getVersionFromPom(repository.getDirectory())).getLastMajorVersion());
+        boolean isDebug = this.debug.orElse(false);
+        String format;
+        if (isDebug) {
+            log.info("From Release version: %s", version.getVersion());
+            format = format(
+                    "%s/release-%s..",
+                    repository.getUpstreamName(),
+                    version.getVersion());
+        }
+        else {
+            log.info("Release version: %s, Last Version: %s", version.getVersion(), version.getLastMajorVersion().getVersion());
+            format = format(
+                    "%s/release-%s..%s/release-%s",
+                    repository.getUpstreamName(),
+                    version.getLastMajorVersion().getVersion(),
+                    repository.getUpstreamName(),
+                    version.getVersion());
+        }
 
-        log.info("Release version: %s, Last Version: %s", version.getVersion(), version.getLastMajorVersion().getVersion());
         List<String> commitIds = Splitter.on("\n")
                 .trimResults()
                 .omitEmptyStrings()
                 .splitToList(git.log(
-                        format(
-                                "%s/release-%s..%s/release-%s",
-                                repository.getUpstreamName(),
-                                version.getLastMajorVersion().getVersion(),
-                                repository.getUpstreamName(),
-                                version.getVersion()),
+                        format,
                         "--format=%H",
                         "--date-order"));
 
         log.info("Fetching Github commits");
-        List<Commit> commits = githubAction.listCommits("release-" + version.getVersion(), commitIds.get(commitIds.size() - 1));
+
+        String branch = "release-" + version.getVersion();
+        if (isDebug) {
+            branch = "master";
+        }
+        List<Commit> commits = githubAction.listCommits(branch, commitIds.get(commitIds.size() - 1));
 
         log.info("Fetched %s commits", commits.size());
         commits = commits.stream()
@@ -161,9 +180,14 @@ public class GenerateReleaseNotesTask
 
         log.info("Generating release notes");
         String releaseNotes = generateReleaseNotes(version, releaseNoteItems, userByLogin.values());
+        String missingReleaseNotes = generateMissingReleaseNotes(releaseNoteItems, commits, userByLogin);
+        if (isDebug) {
+            log.info(missingReleaseNotes);
+            return;
+        }
         String releaseNotesSummary = format(
                 "%s\n%s\n%s",
-                generateMissingReleaseNotes(releaseNoteItems, commits, userByLogin),
+                missingReleaseNotes,
                 generateExtractedReleaseNotes(releaseNoteItems, userByLogin),
                 generateCommits(commits));
 

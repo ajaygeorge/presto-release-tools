@@ -28,7 +28,8 @@ public class TestGenerateReleaseNotesConfig
     public void testDefault()
     {
         assertRecordedDefaults(recordDefaults(GenerateReleaseNotesConfig.class)
-                .setVersion(null));
+                .setVersion(null)
+                .setDebug(null));
     }
 
     @Test
@@ -36,9 +37,11 @@ public class TestGenerateReleaseNotesConfig
     {
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
                 .put("release-notes.version", "0.231")
+                .put("release-notes.debug", "true")
                 .build();
         GenerateReleaseNotesConfig expected = new GenerateReleaseNotesConfig()
-                .setVersion("0.231");
+                .setVersion("0.231")
+                .setDebug("true");
 
         assertFullMapping(properties, expected);
     }
